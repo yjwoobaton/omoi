@@ -10,7 +10,7 @@ const Button: React.FC<ButtonProps> = ({ content, type }) => {
   const { pending } = useFormStatus();
   const buttonType =
     type === "primary"
-      ? "border-transparent text-white bg-brand-100 transition duration-300 ease-in-out transform hover:bg-brand-200:"
+      ? "border-transparent text-white bg-brand-100 transition duration-300 ease-in-out transform hover:bg-brand-200"
       : "text-gray-500";
   return (
     <button
