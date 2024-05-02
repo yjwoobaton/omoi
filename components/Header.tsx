@@ -15,7 +15,7 @@ const Header = () => {
           </Link>
           <ul className="flex gap-2">
             <li>
-              <Link className="block px-2 py-4" href="/feed">
+              <Link className="block px-2 py-4" href="/">
                 피드
               </Link>
             </li>
