@@ -1,13 +1,15 @@
 "use server";
 
-import { z } from "zod";
-import { redirect } from "next/navigation";
-import { PrismaClient } from "@prisma/client";
-import { createHash } from "crypto";
-import nodemailer from "nodemailer";
+import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import db from "@/lib/db";
+import { z } from "zod";
+import { createHash } from "crypto";
+import { redirect } from "next/navigation";
+import nodemailer from "nodemailer";
 import { cookies } from "next/headers";
 import { getIronSession } from "iron-session";
+import getSession from "@/lib/session";
 
 // 이메일 인증 토큰 생성
 async function generateVerificationToken(userId: number) {
@@ -16,6 +18,7 @@ async function generateVerificationToken(userId: number) {
   return token;
 }
 
+// 유저에게 이메일 전송
 async function sendVerificationEmail(email: string, verificationUrl: string) {
   const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -41,75 +44,132 @@ async function sendVerificationEmail(email: string, verificationUrl: string) {
   });
 }
 
-const prisma = new PrismaClient();
-const passwordRegex = new RegExp(/^(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).*$/);
-const userSchema = z.object({
-  username: z
-    .string()
-    .min(2, "2글자 이상 입력해주세요.")
-    .max(20, "최대 20자까지 입력 가능합니다.")
-    .trim()
-    .toLowerCase(),
-  email: z.string().email("이메일 형식이 아닙니다.").trim().toLowerCase(),
-  password: z
-    .string()
-    .regex(passwordRegex, "비밀번호는 영문 대소문자, 특수문자를 포함해야 합니다.")
-    .min(8, "8자 이상 입력해주세요.")
-    .trim(),
-});
+// 유저네임 중복 확인
+// const checkUsername = async (username: string) => {
+//   const user = await db.user.findUnique({
+//     where: {
+//       username,
+//     },
+//     select: {
+//       id: true,
+//     },
+//   });
 
-export default async function handleForm(prevState: any, formData: FormData) {
-  console.log(cookies());
+//   return !Boolean(user);
+// };
+
+// 이메일 중복 확인
+// const checkEmail = async (email: string) => {
+//   const user = await db.user.findUnique({
+//     where: {
+//       email,
+//     },
+//     select: {
+//       id: true,
+//     },
+//   });
+
+//   return !Boolean(user);
+// };
+
+const passwordRegex = new RegExp(/^(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).*$/);
+const userSchema = z
+  .object({
+    username: z
+      .string()
+      .min(2, "2글자 이상 입력해주세요.")
+      .max(20, "최대 20자까지 입력 가능합니다.")
+      .trim()
+      .toLowerCase(), // 쉼표 추가
+    email: z.string().email("이메일 형식이 아닙니다.").trim().toLowerCase(), // 쉼표 추가
+    password: z
+      .string()
+      .regex(passwordRegex, "비밀번호는 영문 대소문자, 특수문자를 포함해야 합니다.")
+      .min(8, "8자 이상 입력해주세요.")
+      .trim(),
+  })
+  .superRefine(async ({ username }, ctx) => {
+    const user = await db.user.findUnique({
+      where: {
+        username,
+      },
+      select: {
+        id: true,
+      },
+    });
+    if (user) {
+      ctx.addIssue({
+        code: "custom",
+        message: "이미 사용중인 닉네임입니다.",
+        path: ["username"],
+        fatal: true,
+      });
+    }
+  })
+  .superRefine(async ({ email }, ctx) => {
+    const user = await db.user.findUnique({
+      where: {
+        email,
+      },
+      select: {
+        id: true,
+      },
+    });
+    if (user) {
+      ctx.addIssue({
+        code: "custom",
+        message: "이미 사용중인 이메일입니다.",
+        path: ["email"],
+        fatal: true,
+      });
+    }
+  });
+
+export default async function createAccount(prevState: any, formData: FormData) {
   const data = {
     username: formData.get("username"),
     email: formData.get("email"),
     password: formData.get("password"),
   };
 
-  const result = userSchema.safeParse(data);
+  const result = await userSchema.spa(data);
 
   if (!result.success) {
     return result.error.flatten();
   } else {
     console.log("user: ", result);
 
-    // 유저네임, 이메일 중복 확인
-    const checkIsUsernameExist = new PrismaClient().user.findUnique({
-      where: {
-        username: result.data.username,
-      },
-    });
-
-    const checkIsEmailExist = new PrismaClient().user.findUnique({
+    const userEmail = await db.user.findUnique({
       where: {
         email: result.data.email,
       },
+      select: {
+        id: true,
+      },
     });
 
-    // 비밀번호 해싱
-    const hashedPassword = createHash("sha256").update(result.data.password).digest("hex");
+    if (userEmail) {
+      throw new Error("이미 사용중인 이메일입니다.");
+    }
 
-    // DB에 유저 저장
-    const user = await prisma.user.create({
+    const hashedPassword = await bcrypt.hash(result.data.password, 12);
+    console.log(hashedPassword);
+
+    const user = await db.user.create({
       data: {
         username: result.data.username,
         email: result.data.email,
         password: hashedPassword,
       },
+      select: {
+        id: true,
+      },
     });
+    console.log(user);
 
-    // 유저 로그인
-    // 유저에게 쿠키를 전달
-    const session = await getIronSession(cookies(), {
-      cookieName: "omoi-cookie",
-      password: process.env.COOKIE_PASSWORD!,
-      // '!': non-null assertion operator
-    });
-    
-
-  
-    // 홈으로 리다이렉트
-
-    redirect("/signup/verify");
+    const session = await getSession();
+    session.id = user.id;
+    await session.save();
+    redirect("/");
   }
 }

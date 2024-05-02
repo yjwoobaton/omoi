@@ -6,7 +6,7 @@ interface ButtonProps {
   type: "primary" | "secondary";
 }
 
-const Button: React.FC<ButtonProps> = ({ content, type }) => {
+const Button: React.FC<ButtonProps> = ({ content, type}) => {
   const { pending } = useFormStatus();
   const buttonType =
     type === "primary"
