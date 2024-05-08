@@ -33,7 +33,7 @@ const formSchema = z.object({
   }),
 });
 
-export async function signIn(prevState: any, formData: FormData) {
+export async function handleSignIn(prevState: any, formData: FormData) {
   const data = {
     email: formData.get("email"),
     password: formData.get("password"),

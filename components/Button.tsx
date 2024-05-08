@@ -4,9 +4,10 @@ import { useFormStatus } from "react-dom";
 interface ButtonProps {
   content: string;
   type: "primary" | "secondary";
+  onClick?: () => void;
 }
 
-const Button: React.FC<ButtonProps> = ({ content, type}) => {
+const Button: React.FC<ButtonProps> = ({ content, type, onClick}) => {
   const { pending } = useFormStatus();
   const buttonType =
     type === "primary"
@@ -17,6 +18,7 @@ const Button: React.FC<ButtonProps> = ({ content, type}) => {
       type="submit"
       className={`w-full py-2 px-4 border rounded-md text-sm font-medium ${buttonType} disabled:bg-brand-50`}
       disabled={pending}
+      onClick={onClick}
     >
       {pending ? "로딩 중..." : content}
     </button>

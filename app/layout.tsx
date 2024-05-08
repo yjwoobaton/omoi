@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Header from "@/components/Header";
+import AuthSession from "@/AuthSession";
 
 export const metadata: Metadata = {
   title: "omoi",
@@ -15,8 +16,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Header/>
-        {children}
+        <AuthSession>
+          <Header />
+          {children}
+        </AuthSession>
       </body>
     </html>
   );

@@ -3,16 +3,21 @@
 import { ReactEventHandler } from "react";
 import { FormEvent } from "react";
 import { redirect } from "next/navigation";
-import Head from "next/head";
-import Header from "@/components/Header";
 import Input from "@/components/Input";
 import Button from "@/components/Button";
 import Link from "next/link";
 import { useFormState } from "react-dom";
-import { signIn } from "./actions";
+import { handleSignIn } from "./actions";
+import { signIn, signOut, useSession } from "next-auth/react";
 
 export default function SignIn() {
-  const [state, action] = useFormState(signIn, null);
+  const [state, action] = useFormState(handleSignIn, null);
+  const { data: session, status } = useSession();
+
+  console.log("session: ", session, status)
+  if (session) {
+    // redirect("/");
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-100 items-center justify-center px-4">
@@ -37,12 +42,25 @@ export default function SignIn() {
           />
           <Button content="로그인" type="primary" />
         </form>
-        <Button content="네이버 로그인" type="secondary" />
+        <Button
+          content="네이버 로그인"
+          type="secondary"
+          onClick={() => {
+            signIn("naver", { redirect: true, callbackUrl: "/" });
+          }}
+        />
+        <Button content="카카오 로그인" type="secondary" />
         <div className="flex items-center">
-          <Link href="/signup" className="text-sm text-gray-500 mr-4 hover:text-gray-700">
+          <Link
+            href="/signup"
+            className="text-sm text-gray-500 mr-4 hover:text-gray-700"
+          >
             회원가입
           </Link>
-          <Link href="/profile" className="text-sm text-gray-500 hover:text-gray-700">
+          <Link
+            href="/profile"
+            className="text-sm text-gray-500 hover:text-gray-700"
+          >
             비밀번호를 잊으셨나요?
           </Link>
         </div>
