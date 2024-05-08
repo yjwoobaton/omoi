@@ -3,12 +3,13 @@
 import Button from "@/components/Button";
 import Link from "next/link";
 import { FormEvent, useState, useEffect } from "react";
-import { useFormState } from "react-dom";
+import { useFormState, useFormStatus } from "react-dom";
 import Input from "@/components/Input";
 import createAccount from "./actions";
 
 export default function SignUp() {
   const [state, action] = useFormState(createAccount, null);
+  const { pending } = useFormStatus();
 
   return (
     <div className="flex min-h-screen bg-gray-100 items-center justify-center px-4">
@@ -48,8 +49,8 @@ export default function SignUp() {
               로그인
             </Link>
           </div>
+          
         </div>
-       
       </div>
     </div>
   );

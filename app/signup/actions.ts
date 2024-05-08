@@ -11,6 +11,26 @@ import { cookies } from "next/headers";
 import { getIronSession } from "iron-session";
 import getSession from "@/lib/session";
 
+async function isTokenExpired(email: string): Promise<boolean> {
+  const user = await db.user.findUnique({
+    where: {
+      email,
+    },
+    select: {
+      emailTokenExpiration: true,
+    },
+  });
+
+  if (!user || !user.emailTokenExpiration) {
+    // 사용자 또는 emailTokenExpiration 값이 없는 경우
+    return true; // 토큰이 만료되었다고 간주
+  }
+
+  // 현재 시간과 emailTokenExpiration 시간을 비교
+  const currentTime = new Date();
+  return currentTime > user.emailTokenExpiration; // 만료 시간이 현재 시간보다 이전이면 true (만료됨)
+}
+
 // 이메일 인증 토큰 생성
 async function generateVerificationToken(userId: number) {
   const secret = process.env.JWT_SECRET!;
@@ -21,7 +41,9 @@ async function generateVerificationToken(userId: number) {
 // 유저에게 이메일 전송
 async function sendVerificationEmail(email: string, verificationUrl: string) {
   const transporter = nodemailer.createTransport({
-    service: "gmail",
+    service: "naver",
+    host: "smtp.naver.com", // SMTP 서버명
+    port: 465, // SMTP 포트
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASSWORD,
@@ -165,11 +187,37 @@ export default async function createAccount(prevState: any, formData: FormData) 
         id: true,
       },
     });
+
     console.log(user);
 
-    const session = await getSession();
-    session.id = user.id;
-    await session.save();
-    redirect("/");
+    const token = await generateVerificationToken(123);
+    
+    await sendVerificationEmail(
+      result.data.email,
+      `${process.env.DEV_DOMAIN}/signup/verify?token=${token}}`
+    );
+
+    const isEmailTokenVerified = await db.user.update({
+      where: {
+        email: result.data.email,
+      },
+      data: {
+        emailToken: token,
+        emailTokenExpiration: new Date(new Date().getTime() + 60 * 60 * 1000),
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    const isEmailTokenExpired = await isTokenExpired(result.data.email);
+
+    if(isEmailTokenVerified && !isEmailTokenExpired) {
+      const session = await getSession();
+      session.id = user.id;
+      await session.save();
+    }
+
+    // redirect("/signup/verify");
   }
 }

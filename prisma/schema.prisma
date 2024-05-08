@@ -8,38 +8,39 @@ datasource db {
 }
 
 model User {
-  id           Int       @id @default(autoincrement())
-  username     String    @unique
-  password     String
-  email        String?   @unique
-  emailVerified Boolean   @default(false)
-  posts        Post[]
-  comments     Comment[]
+  id                   Int       @id @default(autoincrement())
+  username             String    @unique
+  password             String
+  email                String?   @unique
+  emailToken           String?
+  emailTokenExpiration DateTime?
+  comments             Comment[]
+  posts                Post[]
 }
 
 model Post {
-  id          Int      @id @default(autoincrement())
-  content     String
-  image       String
-  latitude    Float
-  longitude   Float
-  user        User     @relation(fields: [userId], references: [id])
-  userId      Int
-  comments    Comment[]
-  maps        Map[]
+  id        Int       @id @default(autoincrement())
+  content   String
+  image     String
+  latitude  Float
+  longitude Float
+  userId    Int
+  comments  Comment[]
+  maps      Map[]
+  user      User      @relation(fields: [userId], references: [id])
 }
 
 model Comment {
-  id        Int    @id @default(autoincrement())
-  content   String
-  user      User   @relation(fields: [userId], references: [id])
-  userId    Int
-  post      Post?  @relation(fields: [postId], references: [id])
-  postId    Int?
+  id      Int    @id @default(autoincrement())
+  content String
+  userId  Int
+  postId  Int?
+  post    Post?  @relation(fields: [postId], references: [id])
+  user    User   @relation(fields: [userId], references: [id])
 }
 
 model Map {
-  id        Int    @id @default(autoincrement())
-  postId    Int
-  post      Post   @relation(fields: [postId], references: [id])
+  id     Int  @id @default(autoincrement())
+  postId Int
+  post   Post @relation(fields: [postId], references: [id])
 }
