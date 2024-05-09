@@ -1,9 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import db from "@/lib/db";
 import jwt from "jsonwebtoken";
-import { createSession } from "@/lib/session";
 
-export default async function verify(req: NextApiRequest, res: NextApiResponse) {
+export default async function verify(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
   // url 쿼리스트링으로 token 받기
   const { token } = req.query;
 
@@ -12,7 +14,10 @@ export default async function verify(req: NextApiRequest, res: NextApiResponse) 
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as jwt.JwtPayload;
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET!
+    ) as jwt.JwtPayload;
     const userId = decoded.userId;
     console.log("User ID from token:", userId);
 
@@ -42,11 +47,12 @@ export default async function verify(req: NextApiRequest, res: NextApiResponse) 
     });
 
     if (!updateEmailVerified) {
-      return res.status(400).json({ message: "Failed to update email verification status" });
+      return res
+        .status(400)
+        .json({ message: "Failed to update email verification status" });
     }
 
-    // 이메일 인증 후 세션 생성
-    await createSession(req, res, userId);
+    res.redirect("/signin");
   } catch (error) {
     console.error("Error during verification:", error);
 
@@ -56,6 +62,8 @@ export default async function verify(req: NextApiRequest, res: NextApiResponse) 
     if (error instanceof jwt.JsonWebTokenError) {
       return res.status(400).json({ message: "Invalid token", error: error });
     }
-    return res.status(500).json({ message: "Verification failed", error: error });
+    return res
+      .status(500)
+      .json({ message: "Verification failed", error: error });
   }
 }

@@ -4,8 +4,8 @@ import bcrypt from "bcrypt";
 import db from "@/lib/db";
 import { z } from "zod";
 import { redirect } from "next/navigation";
-
-// @TODO: 쿠키 만료기간이 지났을 때 재발급하는 함수
+import cookie from 'cookie';
+import createSession from "@/lib/session";
 
 const checkEmailExists = async (email: string) => {
   const user = await db.user.findUnique({
@@ -19,6 +19,7 @@ const checkEmailExists = async (email: string) => {
   return Boolean(user);
 };
 
+// 로그인 폼 유효성 검사
 const formSchema = z.object({
   email: z
     .string({
@@ -37,10 +38,14 @@ export async function handleSignIn(prevState: any, formData: FormData) {
     email: formData.get("email"),
     password: formData.get("password"),
   };
+
+  // 폼 유효성 검사
   const result = await formSchema.spa(data);
+
   if (!result.success) {
     return result.error.flatten();
   } else {
+    // 이메일 대조
     const user = await db.user.findUnique({
       where: {
         email: result.data.email,
@@ -50,8 +55,15 @@ export async function handleSignIn(prevState: any, formData: FormData) {
         password: true,
       },
     });
+
+    // 비밀번호 확인
     const ok = await bcrypt.compare(result.data.password, user!.password ?? "xxxx");
+
     if (ok) {
+      const session = await createSession();
+      console.log("session: ", session);
+      session.id = user!.id;
+      await session.save();
       redirect("/");
     } else {
       return {
