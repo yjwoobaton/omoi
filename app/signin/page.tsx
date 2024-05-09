@@ -16,7 +16,7 @@ export default function SignIn() {
 
   console.log("session: ", session, status)
   if (session) {
-    // redirect("/");
+    redirect("/");
   }
 
   return (
@@ -49,7 +49,6 @@ export default function SignIn() {
             signIn("naver", { redirect: true, callbackUrl: "/" });
           }}
         />
-        <Button content="카카오 로그인" type="secondary" />
         <div className="flex items-center">
           <Link
             href="/signup"
@@ -57,12 +56,12 @@ export default function SignIn() {
           >
             회원가입
           </Link>
-          <Link
+          {/* <Link
             href="/profile"
             className="text-sm text-gray-500 hover:text-gray-700"
           >
             비밀번호를 잊으셨나요?
-          </Link>
+          </Link> */}
         </div>
       </div>
     </div>

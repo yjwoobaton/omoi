@@ -1,15 +1,29 @@
+// lib/session.ts
+
 import { getIronSession } from "iron-session";
-import { cookies } from "next/headers";
+import { NextApiRequest, NextApiResponse } from "next";
 
 interface SessionContent {
   id?: number;
 }
-export default function getSession() {
-  console.log('cookie:', cookies());
-  // 유저에게 쿠키를 전달해 로그인 상태 유지
-  // 쿠키가 없다면 getIronSession 함수가 새로운 쿠키를 생성
-  return getIronSession<SessionContent>(cookies(), {
+
+export async function createSession(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  userId: number,
+) {
+  const session = await getIronSession<SessionContent>(req, res, {
     cookieName: "omoi",
     password: process.env.COOKIE_PASSWORD!,
   });
+
+  // user 아이디를 세션에 저장
+  session.id = userId;
+
+  // 세션 데이터 저장 후 쿠키를 클라이언트로 보냄
+  await session.save();
+
+  res.redirect("/signin");
 }
+
+

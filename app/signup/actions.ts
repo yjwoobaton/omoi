@@ -7,29 +7,6 @@ import { z } from "zod";
 import { createHash } from "crypto";
 import { redirect } from "next/navigation";
 import nodemailer from "nodemailer";
-import { cookies } from "next/headers";
-import { getIronSession } from "iron-session";
-import getSession from "@/lib/session";
-
-async function isTokenExpired(email: string): Promise<boolean> {
-  const user = await db.user.findUnique({
-    where: {
-      email,
-    },
-    select: {
-      emailTokenExpiration: true,
-    },
-  });
-
-  if (!user || !user.emailTokenExpiration) {
-    // 사용자 또는 emailTokenExpiration 값이 없는 경우
-    return true; // 토큰이 만료되었다고 간주
-  }
-
-  // 현재 시간과 emailTokenExpiration 시간을 비교
-  const currentTime = new Date();
-  return currentTime > user.emailTokenExpiration; // 만료 시간이 현재 시간보다 이전이면 true (만료됨)
-}
 
 // 이메일 인증 토큰 생성
 async function generateVerificationToken(userId: number) {
@@ -54,7 +31,8 @@ async function sendVerificationEmail(email: string, verificationUrl: string) {
     from: process.env.EMAIL_USER,
     to: email,
     subject: "[OMOI] 이메일 인증을 진행해주세요.",
-    html: `이메일 인증을 위해 아래 URL을 클릭해주세요.: <a href="${verificationUrl}">${verificationUrl}</a>`,
+    html: `이메일 인증을 위해 아래 URL을 클릭해주세요.:<br>
+    <a href="${verificationUrl}">${verificationUrl}</a>`,
   };
 
   await transporter.sendMail(mailOptions, (error, info) => {
@@ -65,35 +43,6 @@ async function sendVerificationEmail(email: string, verificationUrl: string) {
     }
   });
 }
-
-// 유저네임 중복 확인
-// const checkUsername = async (username: string) => {
-//   const user = await db.user.findUnique({
-//     where: {
-//       username,
-//     },
-//     select: {
-//       id: true,
-//     },
-//   });
-
-//   return !Boolean(user);
-// };
-
-// 이메일 중복 확인
-// const checkEmail = async (email: string) => {
-//   const user = await db.user.findUnique({
-//     where: {
-//       email,
-//     },
-//     select: {
-//       id: true,
-//     },
-//   });
-
-//   return !Boolean(user);
-// };
-
 const passwordRegex = new RegExp(/^(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).*$/);
 const userSchema = z
   .object({
@@ -161,6 +110,7 @@ export default async function createAccount(prevState: any, formData: FormData) 
   } else {
     console.log("user: ", result);
 
+    // 이메일 중복 검사
     const userEmail = await db.user.findUnique({
       where: {
         email: result.data.email,
@@ -175,7 +125,6 @@ export default async function createAccount(prevState: any, formData: FormData) 
     }
 
     const hashedPassword = await bcrypt.hash(result.data.password, 12);
-    console.log(hashedPassword);
 
     const user = await db.user.create({
       data: {
@@ -188,16 +137,20 @@ export default async function createAccount(prevState: any, formData: FormData) 
       },
     });
 
-    console.log(user);
+    if (!user) {
+      throw new Error("유저 정보 저장 실패");
+    }
 
-    const token = await generateVerificationToken(123);
-    
-    await sendVerificationEmail(
-      result.data.email,
-      `${process.env.DEV_DOMAIN}/signup/verify?token=${token}}`
-    );
+    const token = await generateVerificationToken(user.id);
 
-    const isEmailTokenVerified = await db.user.update({
+    console.log("Updating user with data:", {
+      email: result.data.email,
+      token: token,
+      expiration: new Date(new Date().getTime() + 60 * 60 * 1000),
+    });
+
+    // 유저 로우에 이메일 토큰 저장
+    const updateToken = await db.user.update({
       where: {
         email: result.data.email,
       },
@@ -210,14 +163,15 @@ export default async function createAccount(prevState: any, formData: FormData) 
       },
     });
 
-    const isEmailTokenExpired = await isTokenExpired(result.data.email);
-
-    if(isEmailTokenVerified && !isEmailTokenExpired) {
-      const session = await getSession();
-      session.id = user.id;
-      await session.save();
+    if (!updateToken) {
+      throw new Error("토큰 저장 실패");
     }
 
-    // redirect("/signup/verify");
+    await sendVerificationEmail(
+      result.data.email,
+      `${process.env.DEV_DOMAIN}/api/verify?token=${token}`
+    );
+
+    redirect('/signup/verify')
   }
 }

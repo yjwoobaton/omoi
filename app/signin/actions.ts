@@ -3,7 +3,6 @@
 import bcrypt from "bcrypt";
 import db from "@/lib/db";
 import { z } from "zod";
-import getSession from "@/lib/session";
 import { redirect } from "next/navigation";
 
 // @TODO: 쿠키 만료기간이 지났을 때 재발급하는 함수
@@ -53,10 +52,7 @@ export async function handleSignIn(prevState: any, formData: FormData) {
     });
     const ok = await bcrypt.compare(result.data.password, user!.password ?? "xxxx");
     if (ok) {
-      const session = await getSession();
-      session.id = user!.id;
-      await session.save();
-      redirect("/profile");
+      redirect("/");
     } else {
       return {
         fieldErrors: {

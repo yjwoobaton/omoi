@@ -49,7 +49,6 @@ export default function SignUp() {
               로그인
             </Link>
           </div>
-          
         </div>
       </div>
     </div>

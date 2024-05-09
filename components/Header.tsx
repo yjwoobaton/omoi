@@ -4,8 +4,11 @@ import Image from "next/image";
 import logo from "../public/logo/logo_title.svg";
 import Link from "next/link";
 import { useState } from "react";
+import { signOut, useSession } from "next-auth/react";
+import { redirect } from "next/navigation";
 
 const Header = () => {
+  const { data: session, status } = useSession();
   return (
     <header className="bg-white max-w-3xl mx-auto px-4">
       <nav className="flex justify-between items-center gap-4 ">
@@ -19,20 +22,30 @@ const Header = () => {
                 피드
               </Link>
             </li>
-            <li>
-              <Link className="block px-2 py-4" href="/map">
-                지도
-              </Link>
-            </li>
           </ul>
         </div>
         <div className="flex">
-          <Link className="block px-2 py-4" href="/signin">
-            로그인
-          </Link>
-          <Link className="block px-2 py-4" href="/about">
-            User님
-          </Link>
+          {session ? (
+            <button
+              className="block px-2 py-4"
+              onClick={() => {
+                signOut();
+                redirect("/");
+              }}
+            >
+              로그아웃
+            </button>
+          ) : (
+            <Link className="block px-2 py-4" href="/signin">
+              로그인
+            </Link>
+          )}
+
+          {session && (
+            <Link className="block px-2 py-4" href="/">
+              {session.user?.name} 님
+            </Link>
+          )}
         </div>
       </nav>
     </header>
